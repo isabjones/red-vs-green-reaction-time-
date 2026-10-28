@@ -6,6 +6,7 @@ const experiment = {
   ended: false,
   stimulusWait: false,
   stimulusShown: false,
+  colourcurrent: "", 
   stimulusShownAt: -1,
   btnDisabled:false
 };
