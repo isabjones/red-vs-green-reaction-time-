@@ -6,24 +6,24 @@ const experiment = {
   ended: false,
   stimulusWait: false,
   stimulusShown: false,
-  colourcurrent: "", 
   stimulusShownAt: -1,
-  btnDisabled:false
+  currentColour: "", // Tracks whether the current trial is red or green using British spelling
+  btnDisabled: false
 };
 
 const btn = document.querySelector(".button-default");
 const stimulus = document.querySelector(".circle");
 
 const advanceTrial = function () {
-  //reset stimulus
+  // Reset stimulus
   updateStimulus("inactive");
 
   if (experiment.times.length < experiment.maxTrials) {
-    //still need to run more trials
-    experiment.stimulusShown = false; //reset
+    // Still need to run more trials
+    experiment.stimulusShown = false; 
     scheduleStimulus();
   } else {
-    //experiment ended
+    // Experiment ended
     experiment.stimulusShown = false;
     endExperiment();
   }
@@ -34,7 +34,7 @@ const endExperiment = function () {
 
   experiment.ended = true;
 
-  //Update Button Styling
+  // Update Button Styling
   experiment.btnDisabled = false;
   btn.classList.toggle("button-enabled");
   btn.classList.toggle("button-disabled");
@@ -44,20 +44,25 @@ const endExperiment = function () {
 const scheduleStimulus = function () {
   experiment.stimulusWait = true;
   const randomDelay = Math.floor(Math.random() * 4 + 2); // 2 - 5s
-  experiment.waitHnd = window.setTimeout(showStimulus, randomDelay * 1000); //setTimeout runs in milliseconds
+  experiment.waitHnd = window.setTimeout(showStimulus, randomDelay * 1000); 
   console.info(
     "INFO: Trial",
-    experiment.times.length +1,
+    experiment.times.length,
     ". Random delay:",
     randomDelay
   );
 };
 
 const showStimulus = function () {
+  // Randomly assign either 'red' or 'green' for this trial
+  experiment.currentColour = Math.random() < 0.5 ? "red" : "green";
+
   experiment.stimulusShownAt = Date.now();
   console.info(
     "INFO: Trial",
     experiment.times.length,
+    ". Colour:", 
+    experiment.currentColour, 
     ". Stimulus shown",
     experiment.stimulusShownAt
   );
@@ -67,10 +72,15 @@ const showStimulus = function () {
 };
 
 const updateStimulus = function (state) {
-  const otherState = state == "active" ? "inactive" : "active";
-
-  stimulus.classList.add(state);
-  stimulus.classList.remove(otherState);
+  if (state === "active") {
+    // Clear out inactive/other classes and apply active state + randomized colour class
+    stimulus.classList.remove("inactive", "red", "green");
+    stimulus.classList.add("active", experiment.currentColour);
+  } else {
+    // Revert back to inactive white state
+    stimulus.classList.remove("active", "red", "green");
+    stimulus.classList.add("inactive");
+  }
 };
 
 const logReaction = function () {
@@ -78,20 +88,23 @@ const logReaction = function () {
   console.info("INFO: User reaction captured.", userReactedAt);
 
   let deltaTime = userReactedAt - experiment.stimulusShownAt;
-  experiment.times.push(deltaTime);
-  document.querySelector("#time").textContent = deltaTime + " ms";
+  
+  // Store an object containing both the colour and the reaction time
+  experiment.times.push({ colour: experiment.currentColour, time: deltaTime });
+  
+  // Show both reaction time and the colour on screen
+  document.querySelector("#time").textContent = deltaTime + " ms (" + experiment.currentColour + ")";
 };
 
 const userReaction = function () {
   if (!experiment.started) {
     return;
-  } //prior to start of experiment, ignore
+  } 
   if (experiment.stimulusWait) {
-    return;
-  } //ignore false trigger reactions
+    return; 
+  } 
 
   if (experiment.stimulusShown) {
-    //stimulus is visible, capture
     logReaction();
     advanceTrial();
   }
@@ -102,7 +115,7 @@ const startExperiment = function () {
   stimulus.style = "background-color:'';";
   document.querySelector("#instructions").style.display = "none";
   experiment.started = true;
-  window.addEventListener("keypress", onKey); //add keylistener
+  window.addEventListener("keypress", onKey); 
   advanceTrial();
 };
 
@@ -119,16 +132,18 @@ const btnAction = function () {
   } else {
     if (experiment.ended) {
       exportExperimentLog();
-      const stats = computeStatistics(experiment.times);
-      document.querySelector("#time").textContent = [
-        "Count:",
-        stats.cnt,
-        "Mean:",
-        stats.mean.toFixed(2),
-        "ms",
-        "SD:",
-        stats.sd.toFixed(2),
-        "ms",
+      
+      // Separate total trials into individual red and green arrays for statistics calculation
+      const redTimes = experiment.times.filter(t => t.colour === "red").map(t => t.time);
+      const greenTimes = experiment.times.filter(t => t.colour === "green").map(t => t.time);
+      
+      const redStats = computeStatistics(redTimes);
+      const greenStats = computeStatistics(greenTimes);
+
+      // Display split statistics for both colours on screen
+      document.querySelector("#time").innerHTML = [
+        "Red — Count:", redStats.cnt, "Mean:", redStats.mean.toFixed(2), "ms, SD:", redStats.sd.toFixed(2), "ms<br>",
+        "Green — Count:", greenStats.cnt, "Mean:", greenStats.mean.toFixed(2), "ms, SD:", greenStats.sd.toFixed(2), "ms"
       ].join(" ");
     } else {
       console.log("DBG: Should this occur?");
@@ -137,11 +152,9 @@ const btnAction = function () {
 };
 
 const computeStatistics = function (timeArr) {
-  //to get mean, get sum of all trials and divide by number of trials m = sum(x)/cnt(x)
   const sums = timeArr.reduce((acc, num) => acc + num, 0);
   const meanDeltaTime = sums / timeArr.length;
 
-  //standard deviation is  sqrt(sum(x-mean)^2/cnt(x))
   const squaredDiffs = timeArr.reduce(
     (acc, num) => (num - meanDeltaTime) ** 2 + acc,
     0
@@ -156,29 +169,24 @@ const computeStatistics = function (timeArr) {
 };
 
 const exportExperimentLog = function () {
-  let csvHeader = "pid,trial#,reactionTime (ms)\n";
+  let csvHeader = "pid,trial#,colour,reactionTime (ms)\n"; // Updated column header to 'colour'
   let pid = Math.floor(Math.random() * 900000) + 100000;
   let csvData = experiment.times
-    .map((time, idx) => [pid, idx, time].join(","))
-    .join("\n"); //map passes every record in the log array to the getCSVDataLine, we also need to include pid to all rows
-  exportData(csvHeader + csvData, "VisualReactionTestResults.csv");
+    .map((item, idx) => [pid, idx, item.colour, item.time].join(",")) 
+    .join("\n"); 
+  exportData(csvHeader + csvData, "ColourReactionTestResults.csv");
 };
 
 const exportData = function (csvDataString, exportFileName) {
-  // Create a Blob with the CSV data
   const blob = new Blob([csvDataString], { type: "text/csv" });
-
-  // Create a temporary link element
   const a = document.createElement("a");
   a.href = window.URL.createObjectURL(blob);
   a.download = exportFileName;
 
-  // Trigger the download
   document.body.appendChild(a);
   a.style.display = "none";
   a.click();
 
-  // Clean up
   window.URL.revokeObjectURL(a.href);
   document.body.removeChild(a);
 };
