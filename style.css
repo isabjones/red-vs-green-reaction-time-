@@ -15,7 +15,7 @@ to this section's matching END comment to see page-specific styles.
 
 /* Our default values set as CSS variables */
 :root {
-  --color-bg: #69a7f7;
+  --color-bg: #ffffff;
   --color-text-main: #000000;
   --color-primary: #ffff00;
   --wrapper-height: 87vh;
