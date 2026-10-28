@@ -7,7 +7,7 @@ const experiment = {
   stimulusWait: false,
   stimulusShown: false,
   stimulusShownAt: -1,
-  currentColour: "", // Tracks whether the current trial is red or green using British spelling
+  currentColour: "", // Tracks whether the current trial is red or green 
   btnDisabled: false
 };
 
