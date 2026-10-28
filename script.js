@@ -47,7 +47,7 @@ const scheduleStimulus = function () {
   experiment.waitHnd = window.setTimeout(showStimulus, randomDelay * 1000); //setTimeout runs in milliseconds
   console.info(
     "INFO: Trial",
-    experiment.times.length,
+    experiment.times.length +1,
     ". Random delay:",
     randomDelay
   );
